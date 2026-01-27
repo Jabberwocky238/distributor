@@ -1,0 +1,191 @@
+# ============================================
+# 配置变量 (部署前请修改)
+# ============================================
+# 使用方法:
+# export CLOUDFLARE_API_TOKEN=xxxx
+# export DOMAIN=example.com
+# envsubst < k3s-deployment.yaml | kubectl apply -f -
+# ============================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: distributor
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: worker
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: distributor
+  namespace: distributor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: distributor
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "create", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: distributor
+subjects:
+  - kind: ServiceAccount
+    name: distributor
+    namespace: distributor
+roleRef:
+  kind: ClusterRole
+  name: distributor
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: distributor-config
+  namespace: distributor
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    workers: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: distributor
+  namespace: distributor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: distributor
+  template:
+    metadata:
+      labels:
+        app: distributor
+    spec:
+      serviceAccountName: distributor
+      containers:
+        - name: distributor
+          image: ghcr.io/jabberwocky238/distributor:latest
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: distributor-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: distributor
+  namespace: distributor
+spec:
+  selector:
+    app: distributor
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: distributor-admin
+  namespace: distributor
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`distributor.${DOMAIN}`)
+      kind: Rule
+      services:
+        - name: distributor
+          port: 8080
+  tls:
+    secretName: distributor-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: distributor-workers
+  namespace: distributor
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: HostRegexp(`{subdomain:[a-z0-9-]+}.worker.${DOMAIN}`)
+      kind: Rule
+      services:
+        - name: distributor
+          port: 8080
+  tls:
+    secretName: distributor-tls
+---
+# cert-manager ClusterIssuer
+# 需要先安装: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-api-token
+  namespace: cert-manager
+type: Opaque
+stringData:
+  api-token: ${CLOUDFLARE_API_TOKEN}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: distributor-cert
+  namespace: distributor
+spec:
+  secretName: distributor-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - distributor.${DOMAIN}
+    - "*.worker.${DOMAIN}"

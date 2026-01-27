@@ -1,0 +1,106 @@
+name: Build and Push
+
+on:
+  push:
+    branches: [ publish ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-binary:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Build Binary
+      run: |
+        make build
+        ls -lh bin/
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: distributor-exe
+        path: bin/distributor
+        retention-days: 7
+        compression-level: 0
+
+  build-docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha
+          type=raw,value=latest
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  cleanup-artifacts:
+    runs-on: ubuntu-latest
+    needs: [build-binary]
+    permissions:
+      actions: write
+    steps:
+    - name: Delete old artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listArtifactsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            per_page: 100
+          });
+
+          const binaryArtifacts = artifacts.data.artifacts
+            .filter(a => a.name === 'distributor-exe')
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+          const toDelete = binaryArtifacts.slice(3);
+
+          for (const artifact of toDelete) {
+            console.log(`Deleting artifact: ${artifact.name} (${artifact.created_at})`);
+            await github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: artifact.id
+            });
+          }
