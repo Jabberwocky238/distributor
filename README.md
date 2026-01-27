@@ -45,7 +45,7 @@ curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabber
 
 
 kubectl get pods -n distributor
-kubectl describe pod distributor-844d96b496-7nmlp  -n distributor
+kubectl describe pod distributor-7764559ff4-65d46  -n distributor
 ```
 
 ### 3. 部署
@@ -53,7 +53,9 @@ kubectl describe pod distributor-844d96b496-7nmlp  -n distributor
 ```bash
 export CLOUDFLARE_API_TOKEN=xxxx
 export DOMAIN=example.com
+envsubst < distributor-k3s-deployment.yaml > distributor-k3s-deployment-final.yaml
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
+kubectl apply -f distributor-k3s-deployment-final.yaml
 ```
 
 ## Cloudflare API Token

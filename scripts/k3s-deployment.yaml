@@ -78,6 +78,9 @@ spec:
       containers:
         - name: distributor
           image: ghcr.io/jabberwocky238/distributor:latest
+          args:
+            - "-l=:8080"
+            - "-admin=:8081"
           ports:
             - containerPort: 8080
               name: business
