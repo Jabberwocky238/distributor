@@ -2,9 +2,13 @@
 # 配置变量 (部署前请修改)
 # ============================================
 # 使用方法:
-# export CLOUDFLARE_API_TOKEN=xxxx
+# export CLOUDFLARE_ORIGIN_CA_KEY=v1.0-xxxxxxxx
 # export DOMAIN=example.com
 # envsubst < k3s-deployment.yaml | kubectl apply -f -
+#
+# 前置安装:
+# 1. cert-manager: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+# 2. origin-ca-issuer: kubectl apply -f https://github.com/cloudflare/origin-ca-issuer/releases/latest/download/install.yaml
 # ============================================
 ---
 apiVersion: v1
@@ -149,7 +153,14 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: HostRegexp(`[a-z0-9-]+\.[a-z0-9-]+\.worker\.${DOMAIN}`)
+    # 点连接: workerid.ownerid.worker.example.com
+    - match: HostRegexp(`[a-z0-9]+\.[a-z0-9]+\.worker\.${DOMAIN}`)
+      kind: Rule
+      services:
+        - name: distributor
+          port: 8080
+    # 杠连接: workerid-ownerid.worker.example.com
+    - match: HostRegexp(`[a-z0-9]+-[a-z0-9]+\.worker\.${DOMAIN}`)
       kind: Rule
       services:
         - name: distributor
@@ -157,34 +168,29 @@ spec:
   tls:
     secretName: distributor-tls
 ---
-# cert-manager ClusterIssuer
-# 需要先安装: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+# Cloudflare Origin CA Issuer
+# 获取 Origin CA Key: Cloudflare Dashboard -> My Profile -> API Tokens -> Origin CA Key
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cloudflare-api-token
-  namespace: cert-manager
+  name: cloudflare-origin-ca-key
+  namespace: distributor
 type: Opaque
 stringData:
-  api-token: ${CLOUDFLARE_API_TOKEN}
+  key: ${CLOUDFLARE_ORIGIN_CA_KEY}
 ---
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
+apiVersion: cert-manager.k8s.cloudflare.com/v1
+kind: OriginIssuer
 metadata:
-  name: letsencrypt-prod
+  name: cloudflare-origin-issuer
+  namespace: distributor
 spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: shadowsocks1984@gmail.com
-    privateKeySecretRef:
-      name: letsencrypt-prod-key
-    solvers:
-      - dns01:
-          cloudflare:
-            apiTokenSecretRef:
-              name: cloudflare-api-token
-              key: api-token
+  signatureType: OriginECC
+  auth:
+    serviceKeyRef:
+      name: cloudflare-origin-ca-key
+      key: key
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -193,9 +199,11 @@ metadata:
   namespace: distributor
 spec:
   secretName: distributor-tls
+  duration: 8760h # 1 year
   issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
+    name: cloudflare-origin-issuer
+    kind: OriginIssuer
+    group: cert-manager.k8s.cloudflare.com
   dnsNames:
     - distributor.${DOMAIN}
     - "*.worker.${DOMAIN}"

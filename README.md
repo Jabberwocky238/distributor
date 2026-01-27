@@ -38,7 +38,17 @@ curl "nginx01.distributoradmin.worker.app238.com"
 ### 1. 安装 cert-manager
 
 ```bash
+kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+
+kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
+kubectl create secret tls distributor-tls --cert=key.pem --key=cert.pem -n distributor
+
+git clone https://github.com/cloudflare/origin-ca-issuer.git
+cd origin-ca-issuer
+kubectl apply -k deploy/
+
+kubectl create secret generic cloudflare-origin-ca-key --from-literal=key=YOUR_ORIGIN_CA_KEY -n distributor
 ```
 
 ### 2. 下载部署文件
@@ -60,6 +70,7 @@ kubectl delete -f distributor-k3s-deployment-final.yaml
 kubectl delete namespace worker
 kubectl get pods -n distributor
 kubectl describe pod distributor-7ffcbc985-2bncj -n distributor
+kubectl rollout restart deployment/distributor -n distributor
 ```
 
 ## Cloudflare API Token

@@ -50,22 +50,53 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serviceName, worker.Port)
 
 	targetURL, _ := url.Parse(target)
-	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = targetURL.Scheme
+			req.URL.Host = targetURL.Host
+			req.Host = targetURL.Host
+		},
+	}
 	proxy.ServeHTTP(w, r)
 }
 
-// extractDomainPrefix 从 Host 提取 worker_id.owner_id
-// 输入: nginx.distributor.worker.example.com
-// 输出: nginx.distributor
+// extractDomainPrefix 从 Host 提取 workerid.ownerid
+// 支持两种格式:
+// 1. workerid.ownerid.worker.example.com -> workerid.ownerid
+// 2. workerid-ownerid.worker.example.com -> workerid.ownerid
 func extractDomainPrefix(host string) string {
-	// 找到前两个点的位置，提取 worker_id.owner_id
-	dotCount := 0
+	// 找到第一个点的位置
+	firstDot := -1
 	for i := 0; i < len(host); i++ {
 		if host[i] == '.' {
-			dotCount++
-			if dotCount == 2 {
-				return host[:i]
+			firstDot = i
+			break
+		}
+	}
+	if firstDot == -1 {
+		return ""
+	}
+
+	firstPart := host[:firstDot]
+	rest := host[firstDot+1:]
+
+	// 检查 rest 是否以 "worker." 开头 (杠连接格式)
+	if len(rest) >= 7 && rest[:7] == "worker." {
+		// 格式: workerid-ownerid.worker.example.com
+		// 找到 firstPart 中的杠，转换为点
+		for i := 0; i < len(firstPart); i++ {
+			if firstPart[i] == '-' {
+				return firstPart[:i] + "." + firstPart[i+1:]
 			}
+		}
+		return ""
+	}
+
+	// 格式: workerid.ownerid.worker.example.com
+	// 找到第二个点
+	for i := 0; i < len(rest); i++ {
+		if rest[i] == '.' {
+			return firstPart + "." + rest[:i]
 		}
 	}
 	return ""

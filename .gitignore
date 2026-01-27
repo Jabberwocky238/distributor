@@ -1,1 +1,6 @@
 bin/
+
+*.pem
+*.cer
+*.key
+*.crt
