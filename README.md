@@ -22,14 +22,15 @@ HTTP 请求分发器，根据 Host 头将请求反向代理到对应的 worker �
 curl -X POST https://distributor.app238.com/api/register \
   -H "Content-Type: application/json" \
   -d '{
-    "domain": "nginx.worker.app238.com",
-    "worker_id": "nginx_01",
-    "owner_id": "distributor_admin",
+    "worker_id": "nginx01",
+    "owner_id": "distributoradmin",
     "image": "nginx:latest",
     "port": 80
   }'
 
-curl -X POST https://distributor.app238.com/api/register -H "Content-Type: application/json" -d "{\"domain\": \"nginx.worker.app238.com\",\"worker_id\": \"nginx_01\",\"owner_id\": \"distributor_admin\",\"image\": \"nginx:latest\",\"port\": 80}"
+curl -X POST https://distributor.app238.com/api/register -H "Content-Type: application/json" -d "{\"worker_id\": \"nginx01\",\"owner_id\": \"distributoradmin\",\"image\": \"nginx:latest\",\"port\": 80}"
+
+curl "nginx01.distributoradmin.worker.app238.com"
 ```
 
 ## 部署
@@ -49,13 +50,14 @@ curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabber
 ### 3. 部署
 
 ```bash
+crictl rmi ghcr.io/jabberwocky238/distributor:latest
 export CLOUDFLARE_API_TOKEN=xxxx
 export DOMAIN=example.com
 envsubst < distributor-k3s-deployment.yaml > distributor-k3s-deployment-final.yaml
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
 kubectl apply -f distributor-k3s-deployment-final.yaml
 kubectl delete -f distributor-k3s-deployment-final.yaml
-
+kubectl delete namespace worker
 kubectl get pods -n distributor
 kubectl describe pod distributor-7ffcbc985-2bncj -n distributor
 ```

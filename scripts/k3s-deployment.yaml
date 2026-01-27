@@ -149,7 +149,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: HostRegexp(`{subdomain:[a-z0-9-]+}.worker.${DOMAIN}`)
+    - match: HostRegexp(`{subdomain:[a-z0-9-]+}.{owner:[a-z0-9-]+}.worker.${DOMAIN}`)
       kind: Rule
       services:
         - name: distributor

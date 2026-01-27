@@ -9,7 +9,7 @@ import (
 	"github.com/jabberwocky238/distributor/store"
 )
 
-var validIDRegex = regexp.MustCompile(`^[a-z0-9_]+$`)
+var validIDRegex = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 type RegisterHandler struct {
 	store     *store.MemoryStore
@@ -35,11 +35,11 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	}
 
 	if !validIDRegex.MatchString(req.OwnerID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "owner_id must contain only lowercase letters, numbers and underscores"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "owner_id must contain only lowercase letters, numbers and hyphens"})
 		return
 	}
 	if !validIDRegex.MatchString(req.WorkerID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "worker_id must contain only lowercase letters, numbers and underscores"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "worker_id must contain only lowercase letters, numbers and hyphens"})
 		return
 	}
 
