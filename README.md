@@ -41,13 +41,17 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ### 2. 下载部署文件
 
 ```bash
-curl -o distributor-k3s-deployment.yaml \
-  https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/k3s-deployment.yaml
+curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/k3s-deployment.yaml
+
+
+kubectl get pods -n distributor
+kubectl describe pod distributor-844d96b496-7nmlp  -n distributor
 ```
 
 ### 3. 部署
 
 ```bash
+export CLOUDFLARE_API_TOKEN=xxxx
 export DOMAIN=example.com
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
 ```

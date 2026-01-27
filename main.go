@@ -13,11 +13,12 @@ import (
 )
 
 func main() {
-	var configPath, listen string
+	var configPath, listen, adminListen string
 	flag.StringVar(&configPath, "c", "config.yaml", "config file path")
 	flag.StringVar(&configPath, "config", "config.yaml", "config file path")
-	flag.StringVar(&listen, "l", "localhost:8080", "listen address")
-	flag.StringVar(&listen, "listen", "localhost:8080", "listen address")
+	flag.StringVar(&listen, "l", "localhost:8080", "business listen address")
+	flag.StringVar(&listen, "listen", "localhost:8080", "business listen address")
+	flag.StringVar(&adminListen, "admin", "localhost:8081", "admin listen address")
 	flag.Parse()
 
 	cfg, err := config.Load(configPath)
@@ -41,23 +42,33 @@ func main() {
 	proxyHandler := handler.NewProxyHandler(memStore)
 	registerHandler := handler.NewRegisterHandler(memStore, k8sClient)
 
-	r := gin.Default()
+	// 业务服务器 (8080) - 反向代理
+	business := gin.Default()
+	business.NoRoute(proxyHandler.Handle)
 
-	r.GET("/health", func(c *gin.Context) {
+	// 管理服务器 (8081) - API + 健康检查
+	admin := gin.Default()
+	admin.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-
-	api := r.Group("/api")
+	api := admin.Group("/api")
 	{
 		api.POST("/register", registerHandler.Register)
 		api.DELETE("/register/:domain", registerHandler.Delete)
 		api.GET("/workers", registerHandler.List)
 	}
 
-	r.NoRoute(proxyHandler.Handle)
+	// 启动业务服务器
+	go func() {
+		log.Printf("starting business server on %s", listen)
+		if err := business.Run(listen); err != nil {
+			log.Fatalf("business server error: %v", err)
+		}
+	}()
 
-	log.Printf("starting server on %s", listen)
-	if err := r.Run(listen); err != nil {
-		log.Fatalf("server error: %v", err)
+	// 启动管理服务器
+	log.Printf("starting admin server on %s", adminListen)
+	if err := admin.Run(adminListen); err != nil {
+		log.Fatalf("admin server error: %v", err)
 	}
 }

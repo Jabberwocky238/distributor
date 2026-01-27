@@ -80,16 +80,19 @@ spec:
           image: ghcr.io/jabberwocky238/distributor:latest
           ports:
             - containerPort: 8080
+              name: business
+            - containerPort: 8081
+              name: admin
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 8081
             initialDelaySeconds: 3
             periodSeconds: 5
           volumeMounts:
@@ -112,6 +115,10 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+      name: business
+    - port: 8081
+      targetPort: 8081
+      name: admin
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -126,7 +133,7 @@ spec:
       kind: Rule
       services:
         - name: distributor
-          port: 8080
+          port: 8081
   tls:
     secretName: distributor-tls
 ---
