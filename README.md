@@ -42,7 +42,6 @@ kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
 
 kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
-kubectl create secret tls distributor-tls --cert=key.pem --key=cert.pem -n distributor
 
 git clone https://github.com/cloudflare/origin-ca-issuer.git
 cd origin-ca-issuer
@@ -61,10 +60,15 @@ curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabber
 
 ```bash
 crictl rmi ghcr.io/jabberwocky238/distributor:latest
+export ZEROSSL_EAB_KID=your_eab_kid
+export ZEROSSL_EAB_HMAC_KEY=your_eab_hmac_key
 export CLOUDFLARE_API_TOKEN=xxxx
-export DOMAIN=example.com
+export DOMAIN=app238.com
 envsubst < distributor-k3s-deployment.yaml > distributor-k3s-deployment-final.yaml
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
+envsubst < zerossl-issuer.yaml > zerossl-issuer-final.yaml
+envsubst < zerossl-issuer.yaml | kubectl apply -f -
+
 kubectl apply -f distributor-k3s-deployment-final.yaml
 kubectl delete -f distributor-k3s-deployment-final.yaml
 kubectl delete namespace worker
