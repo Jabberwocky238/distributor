@@ -42,10 +42,6 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 
 ```bash
 curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/k3s-deployment.yaml
-
-
-kubectl get pods -n distributor
-kubectl describe pod distributor-7764559ff4-zsst2 -n distributor
 ```
 
 ### 3. 部署
@@ -56,6 +52,10 @@ export DOMAIN=example.com
 envsubst < distributor-k3s-deployment.yaml > distributor-k3s-deployment-final.yaml
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
 kubectl apply -f distributor-k3s-deployment-final.yaml
+kubectl delete -f distributor-k3s-deployment-final.yaml
+
+kubectl get pods -n distributor
+kubectl describe pod distributor-7ffcbc985-bdd5w -n distributor
 ```
 
 ## Cloudflare API Token
