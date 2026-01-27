@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jabberwocky238/distributor/store"
@@ -52,6 +53,7 @@ func (h *ProxyHandler) Handle(c *gin.Context) {
 
 	targetURL, _ := url.Parse(target)
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy.FlushInterval = 100 * time.Millisecond
 	proxy.ServeHTTP(c.Writer, c.Request)
 }
 

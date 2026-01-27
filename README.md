@@ -29,7 +29,7 @@ curl -X POST https://distributor.app238.com/api/register \
   }'
 
 curl -X POST https://distributor.app238.com/api/register -H "Content-Type: application/json" -d "{\"worker_id\": \"nginx01\",\"owner_id\": \"distributoradmin\",\"image\": \"nginx:latest\",\"port\": 80}"
-
+curl -X POST https://distributor.app238.com/api/register -H "Content-Type: application/json" -d "{\"worker_id\": \"nginx02\",\"owner_id\": \"distributoradmin\",\"image\": \"nginx:latest\",\"port\": 80}"
 curl "nginx01.distributoradmin.worker.app238.com"
 ```
 
