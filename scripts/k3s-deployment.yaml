@@ -2,13 +2,12 @@
 # 配置变量 (部署前请修改)
 # ============================================
 # 使用方法:
-# export CLOUDFLARE_ORIGIN_CA_KEY=v1.0-xxxxxxxx
 # export DOMAIN=example.com
 # envsubst < k3s-deployment.yaml | kubectl apply -f -
 #
-# 前置安装:
-# 1. cert-manager: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
-# 2. origin-ca-issuer: kubectl apply -f https://github.com/cloudflare/origin-ca-issuer/releases/latest/download/install.yaml
+# TLS 证书:
+# 手动创建 Cloudflare Origin Certificate，然后:
+# kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
 # ============================================
 ---
 apiVersion: v1
@@ -167,43 +166,3 @@ spec:
           port: 8080
   tls:
     secretName: distributor-tls
----
-# Cloudflare Origin CA Issuer
-# 获取 Origin CA Key: Cloudflare Dashboard -> My Profile -> API Tokens -> Origin CA Key
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudflare-origin-ca-key
-  namespace: distributor
-type: Opaque
-stringData:
-  key: ${CLOUDFLARE_ORIGIN_CA_KEY}
----
-apiVersion: cert-manager.k8s.cloudflare.com/v1
-kind: OriginIssuer
-metadata:
-  name: cloudflare-origin-issuer
-  namespace: distributor
-spec:
-  signatureType: OriginECC
-  auth:
-    serviceKeyRef:
-      name: cloudflare-origin-ca-key
-      key: key
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: distributor-cert
-  namespace: distributor
-spec:
-  secretName: distributor-tls
-  duration: 8760h # 1 year
-  issuerRef:
-    name: cloudflare-origin-issuer
-    kind: OriginIssuer
-    group: cert-manager.k8s.cloudflare.com
-  dnsNames:
-    - distributor.${DOMAIN}
-    - "*.worker.${DOMAIN}"
