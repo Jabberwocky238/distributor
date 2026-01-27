@@ -28,21 +28,48 @@ func (h *ProxyHandler) Handle(c *gin.Context) {
 		}
 	}
 
-	worker, ok := h.store.Get(host)
-	if !ok {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "no worker found for host: " + host,
+	// 从 Host 提取 worker_id.owner_id 前缀
+	// 格式: {worker_id}.{owner_id}.worker.example.com
+	domainPrefix := extractDomainPrefix(host)
+	if domainPrefix == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid host format: " + host,
 		})
 		return
 	}
 
-	serviceName := domainToServiceName(worker.Domain)
+	worker, ok := h.store.Get(domainPrefix)
+	if !ok {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error": "no worker found for: " + domainPrefix,
+		})
+		return
+	}
+
+	serviceName := domainToServiceName(worker.DomainPrefix())
 	target := fmt.Sprintf("http://%s.worker.svc.cluster.local:%d",
 		serviceName, worker.Port)
 
 	targetURL, _ := url.Parse(target)
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+// extractDomainPrefix 从 Host 提取 worker_id.owner_id
+// 输入: nginx.distributor.worker.example.com
+// 输出: nginx.distributor
+func extractDomainPrefix(host string) string {
+	// 找到前两个点的位置，提取 worker_id.owner_id
+	dotCount := 0
+	for i := 0; i < len(host); i++ {
+		if host[i] == '.' {
+			dotCount++
+			if dotCount == 2 {
+				return host[:i]
+			}
+		}
+	}
+	return ""
 }
 
 func domainToServiceName(domain string) string {

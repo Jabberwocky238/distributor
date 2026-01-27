@@ -12,7 +12,6 @@ type HistoryRecord struct {
 }
 
 type Worker struct {
-	Domain   string          `json:"domain" yaml:"domain"`
 	WorkerID string          `json:"worker_id" yaml:"worker_id"`
 	OwnerID  string          `json:"owner_id" yaml:"owner_id"`
 	Image    string          `json:"image" yaml:"image"`
@@ -20,16 +19,18 @@ type Worker struct {
 	History  []HistoryRecord `json:"history" yaml:"-"`
 }
 
+func (w *Worker) DomainPrefix() string {
+	return fmt.Sprintf("%s.%s", w.WorkerID, w.OwnerID)
+}
+
 type MemoryStore struct {
 	mu      sync.RWMutex
-	workers map[string]*Worker // domain -> worker
-	index   map[string]string  // owner_id:worker_id -> domain
+	workers map[string]*Worker // domain prefix -> worker
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		workers: make(map[string]*Worker),
-		index:   make(map[string]string),
 	}
 }
 
@@ -37,15 +38,8 @@ func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := w.OwnerID + ":" + w.WorkerID
-
-	// 检查 owner_id:worker_id 是否已存在于其他 domain
-	if existingDomain, ok := s.index[key]; ok && existingDomain != w.Domain {
-		return false, fmt.Errorf("worker %s/%s already exists at domain %s", w.OwnerID, w.WorkerID, existingDomain)
-	}
-
 	// 检查是否是更新
-	if existing, ok := s.workers[w.Domain]; ok {
+	if existing, ok := s.workers[w.DomainPrefix()]; ok {
 		if existing.Image == w.Image {
 			return false, nil // 镜像未变化
 		}
@@ -58,8 +52,7 @@ func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
 		UpdatedAt: time.Now(),
 	})
 
-	s.workers[w.Domain] = w
-	s.index[key] = w.Domain
+	s.workers[w.DomainPrefix()] = w
 	return true, nil
 }
 
@@ -74,8 +67,7 @@ func (s *MemoryStore) Delete(domain string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if w, ok := s.workers[domain]; ok {
-		key := w.OwnerID + ":" + w.WorkerID
-		delete(s.index, key)
+		fmt.Printf("deleting worker: %+v\n", w)
 	}
 	delete(s.workers, domain)
 }

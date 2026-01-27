@@ -19,15 +19,17 @@ HTTP 请求分发器，根据 Host 头将请求反向代理到对应的 worker �
 ### 注册请求示例
 
 ```bash
-curl -X POST https://distributor.example.com/api/register \
+curl -X POST https://distributor.app238.com/api/register \
   -H "Content-Type: application/json" \
   -d '{
-    "domain": "nginx.worker.example.com",
-    "worker_id": "nginx",
-    "owner_id": "distributor",
+    "domain": "nginx.worker.app238.com",
+    "worker_id": "nginx_01",
+    "owner_id": "distributor_admin",
     "image": "nginx:latest",
     "port": 80
   }'
+
+curl -X POST https://distributor.app238.com/api/register -H "Content-Type: application/json" -d "{\"domain\": \"nginx.worker.app238.com\",\"worker_id\": \"nginx_01\",\"owner_id\": \"distributor_admin\",\"image\": \"nginx:latest\",\"port\": 80}"
 ```
 
 ## 部署
@@ -55,7 +57,7 @@ kubectl apply -f distributor-k3s-deployment-final.yaml
 kubectl delete -f distributor-k3s-deployment-final.yaml
 
 kubectl get pods -n distributor
-kubectl describe pod distributor-7ffcbc985-bdd5w -n distributor
+kubectl describe pod distributor-7ffcbc985-2bncj -n distributor
 ```
 
 ## Cloudflare API Token

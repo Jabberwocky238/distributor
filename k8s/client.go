@@ -35,7 +35,7 @@ func NewClient() (*Client, error) {
 
 func (c *Client) Deploy(worker *store.Worker) error {
 	ctx := context.Background()
-	serviceName := domainToServiceName(worker.Domain)
+	serviceName := domainToServiceName(worker.DomainPrefix())
 
 	if err := c.deployDeployment(ctx, worker, serviceName); err != nil {
 		return err
@@ -122,7 +122,7 @@ func (c *Client) deployService(ctx context.Context, worker *store.Worker, name s
 
 func (c *Client) Delete(worker *store.Worker) error {
 	ctx := context.Background()
-	name := domainToServiceName(worker.Domain)
+	name := domainToServiceName(worker.DomainPrefix())
 
 	c.clientset.AppsV1().Deployments(WorkerNamespace).Delete(ctx, name, metav1.DeleteOptions{})
 	c.clientset.CoreV1().Services(WorkerNamespace).Delete(ctx, name, metav1.DeleteOptions{})

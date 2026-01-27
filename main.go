@@ -29,7 +29,7 @@ func main() {
 	memStore := store.NewMemoryStore()
 	for _, w := range cfg.Workers {
 		if _, err := memStore.Set(w); err != nil {
-			log.Printf("failed to load worker %s: %v", w.Domain, err)
+			log.Printf("failed to load worker %s: %v", w.DomainPrefix(), err)
 		}
 	}
 

@@ -21,7 +21,6 @@ func NewRegisterHandler(s *store.MemoryStore, k *k8s.Client) *RegisterHandler {
 }
 
 type RegisterRequest struct {
-	Domain   string `json:"domain" binding:"required"`
 	WorkerID string `json:"worker_id" binding:"required"`
 	OwnerID  string `json:"owner_id" binding:"required"`
 	Image    string `json:"image" binding:"required"`
@@ -45,7 +44,6 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	}
 
 	worker := &store.Worker{
-		Domain:   req.Domain,
 		WorkerID: req.WorkerID,
 		OwnerID:  req.OwnerID,
 		Image:    req.Image,

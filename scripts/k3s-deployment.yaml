@@ -78,6 +78,7 @@ spec:
       containers:
         - name: distributor
           image: ghcr.io/jabberwocky238/distributor:latest
+          imagePullPolicy: Always
           command: ["./distributor"]
           args: ["-l", ":8080", "-admin", ":8081"]
           ports:
