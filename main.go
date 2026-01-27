@@ -42,9 +42,13 @@ func main() {
 	proxyHandler := handler.NewProxyHandler(memStore)
 	registerHandler := handler.NewRegisterHandler(memStore, k8sClient)
 
-	// 业务服务器 (8080) - 反向代理
-	business := gin.Default()
-	business.NoRoute(proxyHandler.Handle)
+	// 业务服务器 (8080) - 反向代理 (原生 http)
+	go func() {
+		log.Printf("starting business server on %s", listen)
+		if err := http.ListenAndServe(listen, proxyHandler); err != nil {
+			log.Fatalf("business server error: %v", err)
+		}
+	}()
 
 	// 管理服务器 (8081) - API + 健康检查
 	admin := gin.Default()
@@ -57,14 +61,6 @@ func main() {
 		api.DELETE("/register/:domain", registerHandler.Delete)
 		api.GET("/workers", registerHandler.List)
 	}
-
-	// 启动业务服务器
-	go func() {
-		log.Printf("starting business server on %s", listen)
-		if err := business.Run(listen); err != nil {
-			log.Fatalf("business server error: %v", err)
-		}
-	}()
 
 	// 启动管理服务器
 	log.Printf("starting admin server on %s", adminListen)

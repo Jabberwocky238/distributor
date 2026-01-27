@@ -1,13 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jabberwocky238/distributor/store"
 )
 
@@ -19,8 +18,8 @@ func NewProxyHandler(s *store.MemoryStore) *ProxyHandler {
 	return &ProxyHandler{store: s}
 }
 
-func (h *ProxyHandler) Handle(c *gin.Context) {
-	host := c.Request.Host
+func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
 	// 移除端口号
 	for i := len(host) - 1; i >= 0; i-- {
 		if host[i] == ':' {
@@ -30,20 +29,19 @@ func (h *ProxyHandler) Handle(c *gin.Context) {
 	}
 
 	// 从 Host 提取 worker_id.owner_id 前缀
-	// 格式: {worker_id}.{owner_id}.worker.example.com
 	domainPrefix := extractDomainPrefix(host)
 	if domainPrefix == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid host format: " + host,
-		})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid host format: " + host})
 		return
 	}
 
 	worker, ok := h.store.Get(domainPrefix)
 	if !ok {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "no worker found for: " + domainPrefix,
-		})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(map[string]string{"error": "no worker found for: " + domainPrefix})
 		return
 	}
 
@@ -53,8 +51,7 @@ func (h *ProxyHandler) Handle(c *gin.Context) {
 
 	targetURL, _ := url.Parse(target)
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
-	proxy.FlushInterval = 100 * time.Millisecond
-	proxy.ServeHTTP(c.Writer, c.Request)
+	proxy.ServeHTTP(w, r)
 }
 
 // extractDomainPrefix 从 Host 提取 worker_id.owner_id
