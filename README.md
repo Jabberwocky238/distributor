@@ -45,7 +45,7 @@ curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabber
 
 
 kubectl get pods -n distributor
-kubectl describe pod distributor-7764559ff4-65d46  -n distributor
+kubectl describe pod distributor-7764559ff4-zsst2 -n distributor
 ```
 
 ### 3. 部署
