@@ -65,4 +65,5 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - distributor.${DOMAIN}
+    - combinator.${DOMAIN}
     - "*.worker.${DOMAIN}"

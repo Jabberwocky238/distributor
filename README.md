@@ -40,20 +40,14 @@ curl "nginx01.distributoradmin.worker.app238.com"
 ```bash
 kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
-
-kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
-
-git clone https://github.com/cloudflare/origin-ca-issuer.git
-cd origin-ca-issuer
-kubectl apply -k deploy/
-
-kubectl create secret generic cloudflare-origin-ca-key --from-literal=key=YOUR_ORIGIN_CA_KEY -n distributor
 ```
 
 ### 2. 下载部署文件
 
 ```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml 
 curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/k3s-deployment.yaml
+curl -O https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/zerossl-issuer.yaml
 ```
 
 ### 3. 部署
@@ -71,6 +65,18 @@ envsubst < zerossl-issuer.yaml | kubectl apply -f -
 
 kubectl apply -f distributor-k3s-deployment-final.yaml
 kubectl delete -f distributor-k3s-deployment-final.yaml
+kubectl apply -f zerossl-issuer-final.yaml
+kubectl delete -f zerossl-issuer-final.yaml
+
+
+kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
+kubectl delete secret distributor-tls -n distributor
+kubectl delete certificate distributor-cert -n distributor
+envsubst < zerossl-issuer.yaml | kubectl apply -f 
+kubectl describe certificate distributor-cert -n distributor
+kubectl get certificaterequest -n distributor
+kubectl get order -n distributor
+
 kubectl delete namespace worker
 kubectl get pods -n distributor
 kubectl describe pod distributor-7ffcbc985-2bncj -n distributor
