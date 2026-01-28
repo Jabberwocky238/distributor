@@ -68,6 +68,7 @@ kubectl delete -f distributor-k3s-deployment-final.yaml
 kubectl apply -f zerossl-issuer-final.yaml
 kubectl delete -f zerossl-issuer-final.yaml
 
+kubectl get ingressroute -A
 
 kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distributor
 kubectl delete secret distributor-tls -n distributor
