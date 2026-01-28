@@ -1,4 +1,20 @@
 # ============================================
+# Traefik 配置 (允许 ExternalName Services)
+# ============================================
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesIngress:
+        allowExternalNameServices: true
+      kubernetesCRD:
+        allowExternalNameServices: true
+# ============================================
 # 配置变量 (部署前请修改)
 # ============================================
 # 使用方法:
