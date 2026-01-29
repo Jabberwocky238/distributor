@@ -69,6 +69,9 @@ func (c *K8sClient) Deploy(worker *Worker) error {
 	if err := c.deployService(ctx, worker, serviceName); err != nil {
 		return err
 	}
+	if err := c.deployExternalNameService(ctx, worker, serviceName); err != nil {
+		return err
+	}
 	if err := c.deployIngressRoute(ctx, worker, serviceName); err != nil {
 		return err
 	}
@@ -150,6 +153,38 @@ func (c *K8sClient) deployService(ctx context.Context, worker *Worker, name stri
 	return err
 }
 
+func (c *K8sClient) deployExternalNameService(ctx context.Context, worker *Worker, name string) error {
+	labels := map[string]string{
+		"app":       name,
+		"worker_id": worker.WorkerID,
+		"owner_id":  worker.OwnerID,
+	}
+
+	externalName := fmt.Sprintf("%s.%s.svc.cluster.local", name, WorkerNamespace)
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: IngressNamespace,
+			Labels:    labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Type:         corev1.ServiceTypeExternalName,
+			ExternalName: externalName,
+			Ports: []corev1.ServicePort{{
+				Port:     int32(worker.Port),
+				Protocol: corev1.ProtocolTCP,
+			}},
+		},
+	}
+
+	servicesClient := c.clientset.CoreV1().Services(IngressNamespace)
+	_, err := servicesClient.Get(ctx, name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		_, err = servicesClient.Create(ctx, service, metav1.CreateOptions{})
+	}
+	return err
+}
+
 func (c *K8sClient) deployIngressRoute(ctx context.Context, worker *Worker, name string) error {
 	host := fmt.Sprintf("%s.worker.%s", worker.Name(), c.domain)
 
@@ -173,9 +208,8 @@ func (c *K8sClient) deployIngressRoute(ctx context.Context, worker *Worker, name
 						"kind":  "Rule",
 						"services": []interface{}{
 							map[string]interface{}{
-								"name":      name,
-								"namespace": WorkerNamespace,
-								"port":      worker.Port,
+								"name": name,
+								"port": worker.Port,
 							},
 						},
 					},
@@ -199,10 +233,11 @@ func (c *K8sClient) deployIngressRoute(ctx context.Context, worker *Worker, name
 
 func (c *K8sClient) Delete(worker *Worker) error {
 	ctx := context.Background()
-	name := worker.PodName()
+	name := worker.Name()
 
 	c.clientset.AppsV1().Deployments(WorkerNamespace).Delete(ctx, name, metav1.DeleteOptions{})
 	c.clientset.CoreV1().Services(WorkerNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+	c.clientset.CoreV1().Services(IngressNamespace).Delete(ctx, name, metav1.DeleteOptions{})
 	c.deleteIngressRoute(ctx, name)
 	return nil
 }
