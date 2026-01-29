@@ -19,8 +19,12 @@ type Worker struct {
 	History  []HistoryRecord `json:"history" yaml:"-"`
 }
 
-func (w *Worker) DomainPrefix() string {
-	return fmt.Sprintf("%s.%s", w.WorkerID, w.OwnerID)
+func (w *Worker) Name() string {
+	return fmt.Sprintf("%s-%s", w.WorkerID, w.OwnerID)
+}
+
+func (w *Worker) PodName() string {
+	return fmt.Sprintf("worker-%s", w.Name())
 }
 
 type MemoryStore struct {
@@ -39,7 +43,7 @@ func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
 	defer s.mu.Unlock()
 
 	// 检查是否是更新
-	if existing, ok := s.workers[w.DomainPrefix()]; ok {
+	if existing, ok := s.workers[w.Name()]; ok {
 		if existing.Image == w.Image {
 			return false, nil // 镜像未变化
 		}
@@ -52,24 +56,24 @@ func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
 		UpdatedAt: time.Now(),
 	})
 
-	s.workers[w.DomainPrefix()] = w
+	s.workers[w.Name()] = w
 	return true, nil
 }
 
-func (s *MemoryStore) Get(domain string) (*Worker, bool) {
+func (s *MemoryStore) Get(name string) (*Worker, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	w, ok := s.workers[domain]
+	w, ok := s.workers[name]
 	return w, ok
 }
 
-func (s *MemoryStore) Delete(domain string) {
+func (s *MemoryStore) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if w, ok := s.workers[domain]; ok {
+	if w, ok := s.workers[name]; ok {
 		fmt.Printf("deleting worker: %+v\n", w)
 	}
-	delete(s.workers, domain)
+	delete(s.workers, name)
 }
 
 func (s *MemoryStore) List() []*Worker {

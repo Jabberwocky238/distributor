@@ -24,6 +24,7 @@ type RegisterRequest struct {
 	WorkerID string `json:"worker_id" binding:"required"`
 	OwnerID  string `json:"owner_id" binding:"required"`
 	Image    string `json:"image" binding:"required"`
+	Force    bool   `json:"force"`
 	Port     int    `json:"port" binding:"required"`
 }
 
@@ -58,7 +59,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	}
 
 	// 只有镜像变化时才通知 k8s
-	if imageChanged && h.k8sClient != nil {
+	if imageChanged && h.k8sClient != nil && req.Force {
 		if err := h.k8sClient.Deploy(worker); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "k8s deploy failed: " + err.Error(),

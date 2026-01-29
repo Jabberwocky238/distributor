@@ -12,9 +12,7 @@ import (
 )
 
 func main() {
-	var listen, adminListen string
-	flag.StringVar(&listen, "l", "localhost:8080", "business listen address")
-	flag.StringVar(&listen, "listen", "localhost:8080", "business listen address")
+	var adminListen string
 	flag.StringVar(&adminListen, "admin", "localhost:8081", "admin listen address")
 	flag.Parse()
 
@@ -26,16 +24,7 @@ func main() {
 		log.Printf("k8s client init failed (running outside cluster?): %v", err)
 	}
 
-	proxyHandler := handler.NewProxyHandler(memStore)
 	registerHandler := handler.NewRegisterHandler(memStore, k8sClient)
-
-	// 业务服务器 (8080) - 反向代理 (原生 http)
-	go func() {
-		log.Printf("starting business server on %s", listen)
-		if err := http.ListenAndServe(listen, proxyHandler); err != nil {
-			log.Fatalf("business server error: %v", err)
-		}
-	}()
 
 	// 管理服务器 (8081) - API + 健康检查
 	admin := gin.Default()

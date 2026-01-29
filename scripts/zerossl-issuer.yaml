@@ -53,17 +53,22 @@ spec:
               name: cloudflare-api-token
               key: api-token
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress
+---
+# 在ingress命名空间也创建证书，供worker的IngressRoute使用
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: distributor-cert
-  namespace: distributor
+  name: ingress-cert
+  namespace: ingress
 spec:
-  secretName: distributor-tls
+  secretName: ingress-tls
   issuerRef:
     name: zerossl-prod
     kind: ClusterIssuer
   dnsNames:
     - distributor.${DOMAIN}
-    - combinator.${DOMAIN}
     - "*.worker.${DOMAIN}"
