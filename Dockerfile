@@ -8,6 +8,5 @@ RUN go build -o distributor .
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/distributor .
-COPY config.yaml .
 EXPOSE 8081
 CMD ["./distributor"]
