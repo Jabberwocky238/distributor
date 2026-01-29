@@ -91,7 +91,7 @@ spec:
           image: ghcr.io/jabberwocky238/distributor:latest
           imagePullPolicy: Always
           command: ["./distributor"]
-          args: ["-admin", ":8081"]
+          args: ["-admin", ":8081", "-store", "/data/workers.json"]
           env:
             - name: DOMAIN
               value: "${DOMAIN}"
@@ -110,6 +110,12 @@ spec:
               port: 8081
             initialDelaySeconds: 3
             periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
