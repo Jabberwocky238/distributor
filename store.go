@@ -1,7 +1,9 @@
-package store
+package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 )
@@ -9,14 +11,6 @@ import (
 type HistoryRecord struct {
 	Image     string    `json:"image"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type Worker struct {
-	WorkerID string          `json:"worker_id" yaml:"worker_id"`
-	OwnerID  string          `json:"owner_id" yaml:"owner_id"`
-	Image    string          `json:"image" yaml:"image"`
-	Port     int             `json:"port" yaml:"port"`
-	History  []HistoryRecord `json:"history" yaml:"-"`
 }
 
 func (w *Worker) Name() string {
@@ -28,14 +22,26 @@ func (w *Worker) PodName() string {
 }
 
 type MemoryStore struct {
-	mu      sync.RWMutex
-	workers map[string]*Worker // domain prefix -> worker
+	mu       sync.RWMutex
+	workers  map[string]*Worker // name -> worker
+	filePath string             // 持久化文件路径
 }
 
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{
-		workers: make(map[string]*Worker),
+func NewMemoryStore(filePath string) (*MemoryStore, error) {
+	if filePath == "" {
+		filePath = "/data/workers.json"
 	}
+
+	s := &MemoryStore{
+		workers:  make(map[string]*Worker),
+		filePath: filePath,
+	}
+
+	// 尝试从文件加载
+	if err := s.load(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
@@ -57,6 +63,7 @@ func (s *MemoryStore) Set(w *Worker) (imageChanged bool, err error) {
 	})
 
 	s.workers[w.Name()] = w
+	s.save() // 保存到文件
 	return true, nil
 }
 
@@ -74,6 +81,7 @@ func (s *MemoryStore) Delete(name string) {
 		fmt.Printf("deleting worker: %+v\n", w)
 	}
 	delete(s.workers, name)
+	s.save() // 保存到文件
 }
 
 func (s *MemoryStore) List() []*Worker {
@@ -84,4 +92,34 @@ func (s *MemoryStore) List() []*Worker {
 		list = append(list, w)
 	}
 	return list
+}
+
+// save 保存到文件 (调用者必须持有锁)
+func (s *MemoryStore) save() error {
+	data, err := json.MarshalIndent(s.workers, "", "  ")
+	if err != nil {
+		fmt.Printf("failed to marshal workers: %v\n", err)
+		return err
+	}
+
+	if err := os.WriteFile(s.filePath, data, 0644); err != nil {
+		fmt.Printf("failed to write workers file: %v\n", err)
+	}
+	return nil
+}
+
+// load 从文件加载 (调用者必须持有锁)
+func (s *MemoryStore) load() error {
+	data, err := os.ReadFile(s.filePath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Printf("failed to read workers file: %v\n", err)
+		}
+		return err
+	}
+
+	if err := json.Unmarshal(data, &s.workers); err != nil {
+		fmt.Printf("failed to unmarshal workers: %v\n", err)
+	}
+	return nil
 }

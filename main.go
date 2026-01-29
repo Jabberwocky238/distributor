@@ -6,25 +6,25 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jabberwocky238/distributor/handler"
-	"github.com/jabberwocky238/distributor/k8s"
-	"github.com/jabberwocky238/distributor/store"
 )
 
 func main() {
-	var adminListen string
+	var adminListen, storeFile string
 	flag.StringVar(&adminListen, "admin", "localhost:8081", "admin listen address")
+	flag.StringVar(&storeFile, "store", "/data/workers.json", "workers store file path")
 	flag.Parse()
 
-	memStore := store.NewMemoryStore()
-	var err error
-	var k8sClient *k8s.Client
-	k8sClient, err = k8s.NewClient()
+	memStore, err := NewMemoryStore(storeFile)
+	if err != nil {
+		log.Fatalf("failed to initialize memory store: %v", err)
+	}
+	var k8sClient *K8sClient
+	k8sClient, err = NewK8sClient()
 	if err != nil {
 		log.Printf("k8s client init failed (running outside cluster?): %v", err)
 	}
 
-	registerHandler := handler.NewRegisterHandler(memStore, k8sClient)
+	registerHandler := NewRegisterHandler(memStore, k8sClient)
 
 	// 管理服务器 (8081) - API + 健康检查
 	admin := gin.Default()

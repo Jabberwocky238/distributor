@@ -1,11 +1,10 @@
-package k8s
+package main
 
 import (
 	"context"
 	"fmt"
 	"os"
 
-	"github.com/jabberwocky238/distributor/store"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,13 +25,13 @@ var ingressRouteGVR = schema.GroupVersionResource{
 	Resource: "ingressroutes",
 }
 
-type Client struct {
+type K8sClient struct {
 	clientset     *kubernetes.Clientset
 	dynamicClient dynamic.Interface
 	domain        string
 }
 
-func NewClient() (*Client, error) {
+func NewK8sClient() (*K8sClient, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get in-cluster config: %w", err)
@@ -53,14 +52,14 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("DOMAIN environment variable is required")
 	}
 
-	return &Client{
+	return &K8sClient{
 		clientset:     clientset,
 		dynamicClient: dynamicClient,
 		domain:        domain,
 	}, nil
 }
 
-func (c *Client) Deploy(worker *store.Worker) error {
+func (c *K8sClient) Deploy(worker *Worker) error {
 	ctx := context.Background()
 	serviceName := worker.Name()
 
@@ -76,7 +75,7 @@ func (c *Client) Deploy(worker *store.Worker) error {
 	return nil
 }
 
-func (c *Client) deployDeployment(ctx context.Context, worker *store.Worker, name string) error {
+func (c *K8sClient) deployDeployment(ctx context.Context, worker *Worker, name string) error {
 	replicas := int32(1)
 	labels := map[string]string{
 		"app":       name,
@@ -121,7 +120,7 @@ func (c *Client) deployDeployment(ctx context.Context, worker *store.Worker, nam
 	return err
 }
 
-func (c *Client) deployService(ctx context.Context, worker *store.Worker, name string) error {
+func (c *K8sClient) deployService(ctx context.Context, worker *Worker, name string) error {
 	labels := map[string]string{
 		"app":       name,
 		"worker_id": worker.WorkerID,
@@ -151,7 +150,7 @@ func (c *Client) deployService(ctx context.Context, worker *store.Worker, name s
 	return err
 }
 
-func (c *Client) deployIngressRoute(ctx context.Context, worker *store.Worker, name string) error {
+func (c *K8sClient) deployIngressRoute(ctx context.Context, worker *Worker, name string) error {
 	host := fmt.Sprintf("%s.worker.%s", worker.Name(), c.domain)
 
 	ingressRoute := &unstructured.Unstructured{
@@ -198,7 +197,7 @@ func (c *Client) deployIngressRoute(ctx context.Context, worker *store.Worker, n
 	return err
 }
 
-func (c *Client) Delete(worker *store.Worker) error {
+func (c *K8sClient) Delete(worker *Worker) error {
 	ctx := context.Background()
 	name := worker.PodName()
 
@@ -208,7 +207,7 @@ func (c *Client) Delete(worker *store.Worker) error {
 	return nil
 }
 
-func (c *Client) deleteIngressRoute(ctx context.Context, name string) error {
+func (c *K8sClient) deleteIngressRoute(ctx context.Context, name string) error {
 	client := c.dynamicClient.Resource(ingressRouteGVR).Namespace(IngressNamespace)
 	return client.Delete(ctx, name, metav1.DeleteOptions{})
 }

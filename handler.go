@@ -1,22 +1,28 @@
-package handler
+package main
 
 import (
 	"net/http"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jabberwocky238/distributor/k8s"
-	"github.com/jabberwocky238/distributor/store"
 )
 
 var validIDRegex = regexp.MustCompile(`^[a-z0-9]+$`)
 
-type RegisterHandler struct {
-	store     *store.MemoryStore
-	k8sClient *k8s.Client
+type Worker struct {
+	WorkerID string          `json:"worker_id" yaml:"worker_id"`
+	OwnerID  string          `json:"owner_id" yaml:"owner_id"`
+	Image    string          `json:"image" yaml:"image"`
+	Port     int             `json:"port" yaml:"port"`
+	History  []HistoryRecord `json:"history" yaml:"-"`
 }
 
-func NewRegisterHandler(s *store.MemoryStore, k *k8s.Client) *RegisterHandler {
+type RegisterHandler struct {
+	store     *MemoryStore
+	k8sClient *K8sClient
+}
+
+func NewRegisterHandler(s *MemoryStore, k *K8sClient) *RegisterHandler {
 	return &RegisterHandler{store: s, k8sClient: k}
 }
 
@@ -44,7 +50,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 		return
 	}
 
-	worker := &store.Worker{
+	worker := &Worker{
 		WorkerID: req.WorkerID,
 		OwnerID:  req.OwnerID,
 		Image:    req.Image,
@@ -59,7 +65,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	}
 
 	// 只有镜像变化时才通知 k8s
-	if imageChanged && h.k8sClient != nil && req.Force {
+	if (imageChanged && req.Force) || h.k8sClient != nil {
 		if err := h.k8sClient.Deploy(worker); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "k8s deploy failed: " + err.Error(),
