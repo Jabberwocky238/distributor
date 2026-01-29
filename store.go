@@ -17,10 +17,6 @@ func (w *Worker) Name() string {
 	return fmt.Sprintf("%s-%s", w.WorkerID, w.OwnerID)
 }
 
-func (w *Worker) PodName() string {
-	return fmt.Sprintf("worker-%s", w.Name())
-}
-
 type MemoryStore struct {
 	mu       sync.RWMutex
 	workers  map[string]*Worker // name -> worker
