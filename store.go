@@ -113,9 +113,13 @@ func (s *MemoryStore) load() error {
 	data, err := os.ReadFile(s.filePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			fmt.Printf("failed to read workers file: %v\n", err)
+			fmt.Printf("not found to read workers file: %v\n", err)
+			// create file
+			err = s.save()
+			return err
+		} else {
+			return err
 		}
-		return err
 	}
 
 	if err := json.Unmarshal(data, &s.workers); err != nil {

@@ -48,6 +48,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml 
 curl -o distributor-k3s-deployment.yaml https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/k3s-deployment.yaml
 curl -O https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/zerossl-issuer.yaml
+curl -O https://raw.githubusercontent.com/jabberwocky238/distributor/main/scripts/ingress.yaml
 ```
 
 ### 3. 部署
@@ -62,6 +63,8 @@ envsubst < distributor-k3s-deployment.yaml > distributor-k3s-deployment-final.ya
 envsubst < distributor-k3s-deployment.yaml | kubectl apply -f -
 envsubst < zerossl-issuer.yaml > zerossl-issuer-final.yaml
 envsubst < zerossl-issuer.yaml | kubectl apply -f -
+envsubst < ingress.yaml > ingress-final.yaml
+envsubst < ingress.yaml | kubectl apply -f -
 
 kubectl apply -f distributor-k3s-deployment-final.yaml
 kubectl delete -f distributor-k3s-deployment-final.yaml
