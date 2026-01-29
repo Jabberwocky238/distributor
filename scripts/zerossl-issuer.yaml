@@ -8,7 +8,6 @@
 #    export ZEROSSL_EAB_KID=your_eab_kid
 #    export ZEROSSL_EAB_HMAC_KEY=your_eab_hmac_key
 #    export CLOUDFLARE_API_TOKEN=your_cloudflare_token
-#    export DOMAIN=example.com
 # 4. 部署:
 #    envsubst < zerossl-issuer.yaml | kubectl apply -f -
 # ============================================
@@ -52,23 +51,3 @@ spec:
             apiTokenSecretRef:
               name: cloudflare-api-token
               key: api-token
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ingress
----
-# 在ingress命名空间也创建证书，供worker的IngressRoute使用
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ingress-cert
-  namespace: ingress
-spec:
-  secretName: ingress-tls
-  issuerRef:
-    name: zerossl-prod
-    kind: ClusterIssuer
-  dnsNames:
-    - distributor.${DOMAIN}
-    - "*.worker.${DOMAIN}"
