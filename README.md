@@ -77,9 +77,9 @@ kubectl create secret tls distributor-tls --cert=cert.pem --key=key.pem -n distr
 kubectl delete secret distributor-tls -n distributor
 kubectl delete certificate distributor-cert -n distributor
 envsubst < zerossl-issuer.yaml | kubectl apply -f 
-kubectl describe certificate distributor-cert -n distributor
+kubectl describe certificate ingress-cert -n ingress
 kubectl get certificaterequest -n distributor
-kubectl get order -n distributor
+kubectl get order -n ingress
 
 kubectl delete namespace worker
 kubectl get pods -n distributor

@@ -76,6 +76,3 @@ metadata:
 spec:
   type: ExternalName
   externalName: distributor.distributor.svc.cluster.local
-  ports:
-    - port: 8081
-      name: admin

@@ -170,10 +170,6 @@ func (c *K8sClient) deployExternalNameService(ctx context.Context, worker *Worke
 		Spec: corev1.ServiceSpec{
 			Type:         corev1.ServiceTypeExternalName,
 			ExternalName: externalName,
-			Ports: []corev1.ServicePort{{
-				Port:     int32(worker.Port),
-				Protocol: corev1.ProtocolTCP,
-			}},
 		},
 	}
 
