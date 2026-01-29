@@ -124,7 +124,6 @@ spec:
       kind: Rule
       services:
         - name: distributor
-          namespace: distributor
           port: 8081
   tls:
     secretName: ingress-tls
@@ -140,5 +139,4 @@ spec:
   externalName: distributor.distributor.svc.cluster.local
   ports:
     - port: 8081
-      targetPort: 8081
       name: admin
