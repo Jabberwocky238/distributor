@@ -108,22 +108,23 @@ func (s *MemoryStore) save() error {
 	return nil
 }
 
-// load 从文件加载 (调用者必须持有锁)
+// load 从文件加载
 func (s *MemoryStore) load() error {
 	data, err := os.ReadFile(s.filePath)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			fmt.Printf("not found to read workers file: %v\n", err)
-			// create file
-			err = s.save()
-			return err
-		} else {
-			return err
+		if os.IsNotExist(err) {
+			// 文件不存在，创建空文件
+			fmt.Printf("workers file not found, creating: %s\n", s.filePath)
+			return s.save()
 		}
+		// 其他读取错误
+		fmt.Printf("failed to read workers file: %v\n", err)
+		return err
 	}
 
 	if err := json.Unmarshal(data, &s.workers); err != nil {
 		fmt.Printf("failed to unmarshal workers: %v\n", err)
+		return err
 	}
 	return nil
 }
