@@ -65,7 +65,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	}
 
 	// 只有镜像变化时才通知 k8s
-	if (imageChanged && req.Force) || h.k8sClient != nil {
+	if (imageChanged || req.Force) && h.k8sClient != nil {
 		if err := h.k8sClient.Deploy(worker); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "k8s deploy failed: " + err.Error(),
