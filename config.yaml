@@ -1,9 +1,0 @@
-server:
-  port: 8080
-
-workers:
-  - domain: "api.example.com"
-    namespace: "default"
-    owner: "team-backend"
-    image: "nginx:latest"
-    port: 80

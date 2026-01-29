@@ -6,33 +6,20 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jabberwocky238/distributor/config"
 	"github.com/jabberwocky238/distributor/handler"
 	"github.com/jabberwocky238/distributor/k8s"
 	"github.com/jabberwocky238/distributor/store"
 )
 
 func main() {
-	var configPath, listen, adminListen string
-	flag.StringVar(&configPath, "c", "config.yaml", "config file path")
-	flag.StringVar(&configPath, "config", "config.yaml", "config file path")
+	var listen, adminListen string
 	flag.StringVar(&listen, "l", "localhost:8080", "business listen address")
 	flag.StringVar(&listen, "listen", "localhost:8080", "business listen address")
 	flag.StringVar(&adminListen, "admin", "localhost:8081", "admin listen address")
 	flag.Parse()
 
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
-	}
-
 	memStore := store.NewMemoryStore()
-	for _, w := range cfg.Workers {
-		if _, err := memStore.Set(w); err != nil {
-			log.Printf("failed to load worker %s: %v", w.DomainPrefix(), err)
-		}
-	}
-
+	var err error
 	var k8sClient *k8s.Client
 	k8sClient, err = k8s.NewClient()
 	if err != nil {
