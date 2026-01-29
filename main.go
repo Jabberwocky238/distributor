@@ -28,6 +28,14 @@ func main() {
 
 	// 管理服务器 (8081) - API + 健康检查
 	admin := gin.Default()
+	admin.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "text/html", `<html>
+	<head><title>Distributor Admin</title></head>
+	<body>
+	<h1>WELCOME TO JW238 Distributor Admin</h1>
+	</body>
+	<body>`)
+	})
 	admin.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
